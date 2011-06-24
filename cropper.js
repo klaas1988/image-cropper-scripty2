@@ -131,48 +131,62 @@
  * Extend the Draggable class to allow us to pass the rendering
  * down to the Cropper object.
  */
-var CropDraggable = Class.create(Draggable, {
-	
-	initialize: function(element) {
-		this.options = Object.extend(
-			{
-				/**
-				 * The draw method to defer drawing to
-				 */
-				drawMethod: function() {}
-			}, 
-			arguments[1] || {}
-		);
+var CropDraggable = Class.create(S2.UI.Behavior.Drag, {
 
-		this.element = $(element);
-
-		this.handle = this.element;
-
-		this.delta    = this.currentDelta();
-		this.dragging = false;   
-
-		this.eventMouseDown = this.initDrag.bindAsEventListener(this);
-		Event.observe(this.handle, "mousedown", this.eventMouseDown);
-
-		Draggables.register(this);
+	initialize: function($super, element, options) {
+		this.options = Object.extend({
+			/**
+			 * The draw method to defer drawing to
+			 */
+			drawMethod: function() {}
+		});
+		this.__onmousemove = this._onmousemove.bind(this);
+		$super(element, options);
+		this.element.addClassName('ui-draggable');
 	},
-	
+
+	/**
+	 * The onmousedown handle of S2.UI.Behavior.Drag doesn't stop the event for
+	 * some reason. This fixes it.
+	 */
+	"handle/onmousedown": function(event) {
+		var element = this.element;
+		this._startPointer  = event.pointer();
+		this._startPosition = {
+			left: window.parseInt(element.getStyle('left'), 10),
+			top:  window.parseInt(element.getStyle('top'),  10)
+		};
+		document.observe('mousemove', this.__onmousemove);
+		Event.stop(event);
+	},
+
 	/**
 	 * Defers the drawing of the draggable to the supplied method
 	 */
-	draw: function(point) {
-		var pos = Element.cumulativeOffset(this.element),
-		    d = this.currentDelta();
-		pos[0] -= d[0]; 
-		pos[1] -= d[1];
-				
-		var p = [0,1].map(function(i) { 
-			return (point[i]-pos[i]-this.offset[i]);
+	_onmousemove: function(event) {
+		var pointer = event.pointer(), delta, newPosition, p;
+
+		// Can sometimes happen if the pointer exited the window during
+		// mousedown.
+		if (!this._startPointer) {
+			return;
+		}
+ 
+		delta = {
+			x: pointer.x - this._startPointer.x,
+			y: pointer.y - this._startPointer.y
+		};
+		newPosition = [
+			this._startPosition.left + delta.x,
+			this._startPosition.top  + delta.y
+		];
+		p = [0, 1].map(function (i) { 
+			return (newPosition[i]);
 		}.bind(this));
-				
-		this.options.drawMethod( p );
+
+		this.options.drawMethod(p);
 	}
-	
+
 });
 
 
@@ -1163,7 +1177,6 @@ Cropper.Img = Class.create({
 	 */
 	onDrag: function( e ) {
 		if( this.dragging || this.resizing ) {
-		
 			var resizeHandle = null,
 					curPos = this.getCurPos( e ),
 					newCoords = this.cloneCoords( this.areaCoords ),
