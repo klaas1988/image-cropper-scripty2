@@ -154,13 +154,13 @@ var CropDraggable = Class.create(S2.UI.Behavior.Drag, {
 		};
 		document.observe('mousemove', this.__onmousemove);
 
-		// Workaround for the problem that "handle/onmouseup" isn't called when
-		// the drag is released outside of the click area.
+		// workaround for the problem that "handle/onmouseup" isn't called when
+		// the drag is released outside of the click area
 		this.endDragBind = this.endDrag.bindAsEventListener(this, event.target);
 		Event.observe(document, 'mouseup', this.endDragBind);
 
-		// The onmousedown handle of S2.UI.Behavior.Drag doesn't stop the event for
-		// some reason. This fixes it.
+		// the onmousedown handle of S2.UI.Behavior.Drag doesn't stop the event for
+		// some reason, this fixes it
 		Event.stop(event);
 	},
 
@@ -181,6 +181,9 @@ var CropDraggable = Class.create(S2.UI.Behavior.Drag, {
 	 * Defers the drawing of the draggable to the supplied method
 	 */
 	_onmousemove: function(event) {
+		// fix for a bug in scripty2, it should stop the default action
+		Event.stop(event);
+
 		var pointer = event.pointer(), delta, newPosition, p;
 
 		// Can sometimes happen if the pointer exited the window during
