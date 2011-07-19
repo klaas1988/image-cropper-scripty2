@@ -145,10 +145,6 @@ var CropDraggable = Class.create(S2.UI.Behavior.Drag, {
 		this.element.addClassName('ui-draggable');
 	},
 
-	/**
-	 * The onmousedown handle of S2.UI.Behavior.Drag doesn't stop the event for
-	 * some reason. This fixes it.
-	 */
 	"handle/onmousedown": function(event) {
 		var element = this.element;
 		this._startPointer  = event.pointer();
@@ -157,7 +153,28 @@ var CropDraggable = Class.create(S2.UI.Behavior.Drag, {
 			top:  window.parseInt(element.getStyle('top'),  10)
 		};
 		document.observe('mousemove', this.__onmousemove);
+
+		// Workaround for the problem that "handle/onmouseup" isn't called when
+		// the drag is released outside of the click area.
+		this.endDragBind = this.endDrag.bindAsEventListener(this, event.target);
+		Event.observe(document, 'mouseup', this.endDragBind);
+
+		// The onmousedown handle of S2.UI.Behavior.Drag doesn't stop the event for
+		// some reason. This fixes it.
 		Event.stop(event);
+	},
+
+	/**
+	 * Replacement for when "handle/onmouseup" isn't called where it should.
+	 */
+	endDrag: function(event, srcElement) {
+		Event.stopObserving(document, 'mouseup', this.endDragBind);
+		// execute only when mouseup happens outside select area
+		if (event.target !== srcElement) {
+			this._startPointer  = null;
+			this._startPosition = null;
+			document.stopObserving('mousemove', this.__onmousemove);
+		}
 	},
 
 	/**
@@ -171,7 +188,7 @@ var CropDraggable = Class.create(S2.UI.Behavior.Drag, {
 		if (!this._startPointer) {
 			return;
 		}
- 
+
 		delta = {
 			x: pointer.x - this._startPointer.x,
 			y: pointer.y - this._startPointer.y
