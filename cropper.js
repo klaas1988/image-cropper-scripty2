@@ -547,13 +547,10 @@ Cropper.Img = Class.create({
 		// add event observers
 		this.startDragBind = this.startDrag.bindAsEventListener( this );
 		Event.observe( this.dragArea, 'mousedown', this.startDragBind );
-		
-		this.onDragBind = this.onDrag.bindAsEventListener( this );
-		Event.observe( document, 'mousemove', this.onDragBind );
-		
-		this.endCropBind = this.endCrop.bindAsEventListener( this );
-		Event.observe( document, 'mouseup', this.endCropBind );
-		
+
+		this.onDragBind = this.onDrag.bindAsEventListener(this);
+		this.endCropBind = this.endCrop.bindAsEventListener(this);
+
 		this.resizeBind = this.startResize.bindAsEventListener( this );
 		this.handles = [ this.handleN, this.handleNE, this.handleE, this.handleSE, this.handleS, this.handleSW, this.handleW, this.handleNW ];
 		this.registerHandles( true );
@@ -562,6 +559,9 @@ Cropper.Img = Class.create({
 			this.keysBind = this.handleKeys.bindAsEventListener( this );
 			Event.observe( document, 'keypress', this.keysBind );
 		}
+
+		// only true when the drag area is moved for the first time
+		this.firstMove = true;
 
 		// attach the dragable to the select area
 		var x = new CropDraggable( this.selArea, { drawMethod: this.moveArea.bindAsEventListener( this ) } );
@@ -683,8 +683,6 @@ Cropper.Img = Class.create({
 			
 			// remove the event observers
 			Event.stopObserving( this.dragArea, 'mousedown', this.startDragBind );
-			Event.stopObserving( document, 'mousemove', this.onDragBind );		
-			Event.stopObserving( document, 'mouseup', this.endCropBind );
 			this.registerHandles( false );
 			if( this.options.captureKeys ) {
 				Event.stopObserving( document, 'keypress', this.keysBind );
@@ -773,6 +771,12 @@ Cropper.Img = Class.create({
 	 * @return void
 	 */
 	moveArea: function( point ) {
+		if (this.firstMove === true) {
+			Event.observe(document, 'mousemove', this.onDragBind);
+			Event.observe(document, 'mouseup', this.endCropBind);
+			this.firstMove = false;
+		}
+
 		// dump( 'moveArea        : ' + point[0] + ',' + point[1] + ',' + ( point[0] + ( this.areaCoords.x2 - this.areaCoords.x1 ) ) + ',' + ( point[1] + ( this.areaCoords.y2 - this.areaCoords.y1 ) ) + '\n' );
 		this.setAreaCoords( 
 			{
@@ -1139,6 +1143,9 @@ Cropper.Img = Class.create({
 	 * @return void
 	 */
 	startResize: function( e ) {
+		Event.observe(document, 'mousemove', this.onDragBind);
+		Event.observe(document, 'mouseup', this.endCropBind);
+
 		this.startCoords = this.cloneCoords( this.areaCoords );
 		
 		this.resizing = true;
@@ -1155,6 +1162,9 @@ Cropper.Img = Class.create({
 	 * @return void
 	 */
 	startDrag: function( e ) {
+		Event.observe(document, 'mousemove', this.onDragBind);
+		Event.observe(document, 'mouseup', this.endCropBind);
+
 		this.selArea.show();
 		this.clickCoords = this.getCurPos( e );
 
@@ -1266,6 +1276,11 @@ Cropper.Img = Class.create({
 	 * @return void
 	 */
 	endCrop : function() {
+		Event.stopObserving(document, 'mousemove', this.onDragBind);
+		Event.stopObserving(document, 'mouseup', this.endCropBind);
+
+		this.firstMove = true;
+
 		this.dragging = false;
 		this.resizing = false;
 		
